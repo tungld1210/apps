@@ -6,26 +6,26 @@
     <title>Ứng dụng Kiểm tra Dữ liệu Excel</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        .gradient-bg {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        }
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
         .card {
             background-color: white;
             border-radius: 1rem;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             transition: all 0.3s ease-in-out;
         }
-        .btn {
-            transition: all 0.2s ease-in-out;
-        }
+        .btn { transition: all 0.2s ease-in-out; }
         .btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .btn-small {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.8rem;
+            border-radius: 0.5rem;
         }
         #drop-zone {
             border: 2px dashed #cbd5e1;
@@ -46,13 +46,10 @@
             </div>
 
             <div class="mb-6 p-4 bg-indigo-50 border border-indigo-200 rounded-lg text-sm text-indigo-700">
-                <p class="font-bold text-indigo-900">Lưu ý quan trọng:</p>
+                 <p class="font-bold text-indigo-900">Lưu ý quan trọng:</p>
                 <p class="mt-1">Để ứng dụng hoạt động chính xác, các tệp Excel của bạn phải chứa các cột với tiêu đề sau (không phân biệt chữ hoa/thường):</p>
                 <ul class="list-disc list-inside mt-2 space-y-1 font-mono">
-                    <li class="text-indigo-800"><code class="bg-indigo-100 text-indigo-900 px-2 py-1 rounded">số hồ sơ</code></li>
-                    <li class="text-indigo-800"><code class="bg-indigo-100 text-indigo-900 px-2 py-1 rounded">thbq</code></li>
-                    <li class="text-indigo-800"><code class="bg-indigo-100 text-indigo-900 px-2 py-1 rounded">ngày bắt đầu</code></li>
-                    <li class="text-indigo-800"><code class="bg-indigo-100 text-indigo-900 px-2 py-1 rounded">ngày kết thúc</code></li>
+                    <li class="text-indigo-800"><code class="bg-indigo-100 text-indigo-900 px-2 py-1 rounded">số hồ sơ</code>, <code class="bg-indigo-100 text-indigo-900 px-2 py-1 rounded">thbq</code>, <code class="bg-indigo-100 text-indigo-900 px-2 py-1 rounded">ngày bắt đầu</code>, <code class="bg-indigo-100 text-indigo-900 px-2 py-1 rounded">ngày kết thúc</code></li>
                 </ul>
             </div>
 
@@ -73,7 +70,7 @@
 
             <div id="result-section" class="hidden mt-8">
                 <div id="spinner" class="text-center hidden">
-                    <svg class="animate-spin h-10 w-10 text-indigo-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                     <svg class="animate-spin h-10 w-10 text-indigo-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -81,19 +78,24 @@
                 </div>
 
                 <div id="result-content" class="hidden">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Kết Quả Kiểm Tra Tổng Hợp</h2>
-                    <div class="bg-gray-50 p-4 rounded-lg max-h-96 overflow-y-auto border">
-                        <pre id="log-output" class="text-sm text-gray-700 whitespace-pre-wrap break-words"></pre>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Kết Quả Kiểm Tra</h2>
+                    
+                    <div id="detailed-results-container" class="mb-8"></div>
+
+                    <div class="bg-gray-100 p-4 rounded-lg">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2 text-center">Tải xuống hàng loạt & Thao tác</h3>
+                        <div class="mt-4 flex flex-col sm:flex-row justify-center items-center gap-4">
+                            <button id="download-log-btn" class="w-full sm:w-auto bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-green-700 btn disabled:bg-gray-400">
+                                Tải Tất Cả Logs
+                            </button>
+                            <button id="download-highlight-btn" class="w-full sm:w-auto bg-amber-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-amber-600 btn disabled:bg-gray-400">
+                                Tải Tất Cả Highlights
+                            </button>
+                            <button id="reload-btn" class="w-full sm:w-auto bg-sky-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-sky-700 btn">
+                                Kiểm Tra Tệp Khác
+                            </button>
+                        </div>
                     </div>
-                    <div class="mt-6 flex flex-col sm:flex-row justify-center items-center gap-4">
-                        <button id="download-log-btn" class="w-full sm:w-auto bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-green-700 btn">
-                            Tải File Log Tổng Hợp (.txt)
-                        </button>
-                        <button id="download-highlight-btn" class="w-full sm:w-auto bg-amber-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-amber-600 btn disabled:bg-gray-400 disabled:cursor-not-allowed">
-                            Tải File Highlight (.xlsx)
-                        </button>
-                    </div>
-                     <p id="highlight-note" class="text-center text-xs text-gray-500 mt-3 hidden">Nút tải file highlight chỉ bật khi xử lý một tệp duy nhất.</p>
                 </div>
             </div>
         </div>
@@ -114,62 +116,21 @@
             const spinner = document.getElementById('spinner');
             const spinnerText = document.getElementById('spinner-text');
             const resultContent = document.getElementById('result-content');
-            const logOutput = document.getElementById('log-output');
             const downloadLogBtn = document.getElementById('download-log-btn');
             const downloadHighlightBtn = document.getElementById('download-highlight-btn');
-            const highlightNote = document.getElementById('highlight-note');
+            const reloadBtn = document.getElementById('reload-btn');
+            const detailedResultsContainer = document.getElementById('detailed-results-container');
 
-            let selectedFiles = []; 
-            let combinedLogContent = "";
-            let workbookToHighlight = null;
-            let rowsToHighlightGlobal = {};
-            let baseFileNameGlobal = "ket_qua";
+            let selectedFiles = [];
+            let processingResults = [];
 
-            // --- Drag and Drop & File Selection Logic ---
-            dropZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                dropZone.classList.add('dragover');
-            });
-            dropZone.addEventListener('dragleave', (e) => {
-                e.preventDefault();
-                dropZone.classList.remove('dragleave');
-            });
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropZone.classList.remove('dragover');
-                if (e.dataTransfer.files.length > 0) {
-                    handleFiles(e.dataTransfer.files);
-                }
-            });
-            dropZone.addEventListener('click', (e) => {
-                if (e.target.id !== 'file-input') {
-                    fileInput.click();
-                }
-            });
-            fileInput.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) {
-                    handleFiles(e.target.files);
-                }
-            });
-            
+            // --- Event Listeners ---
             function handleFiles(files) {
-                selectedFiles = [];
-                let validFilesCount = 0;
-                let errorMessages = [];
-
-                for(const file of files) {
-                    if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
-                        selectedFiles.push(file);
-                        validFilesCount++;
-                    } else {
-                        errorMessages.push(file.name);
-                    }
-                }
-                
-                if (validFilesCount > 0) {
-                    fileNameDisplay.textContent = `Đã chọn ${validFilesCount} tệp hợp lệ.`;
-                    if (errorMessages.length > 0) {
-                        fileNameDisplay.textContent += ` (Bỏ qua: ${errorMessages.join(', ')})`;
+                selectedFiles = Array.from(files).filter(file => file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')));
+                if (selectedFiles.length > 0) {
+                    fileNameDisplay.textContent = `Đã chọn ${selectedFiles.length} tệp hợp lệ.`;
+                     if (files.length > selectedFiles.length) {
+                        fileNameDisplay.textContent += ` (Bỏ qua ${files.length - selectedFiles.length} tệp không hợp lệ).`;
                     }
                     processBtn.disabled = false;
                 } else {
@@ -177,30 +138,38 @@
                     processBtn.disabled = true;
                 }
             }
+            ['dragover', 'dragleave', 'drop'].forEach(eventName => dropZone.addEventListener(eventName, e => e.preventDefault()));
+            dropZone.addEventListener('dragover', () => dropZone.classList.add('dragover'));
+            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+            dropZone.addEventListener('drop', e => {
+                dropZone.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files);
+            });
+            dropZone.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', e => {
+                if (e.target.files.length > 0) handleFiles(e.target.files);
+            });
+            reloadBtn.addEventListener('click', () => location.reload());
 
             // --- Processing Logic ---
             processBtn.addEventListener('click', async () => {
                 if (selectedFiles.length === 0) return;
 
+                // --- UI Reset ---
                 uploadSection.classList.add('hidden');
                 resultSection.classList.remove('hidden');
                 spinner.classList.remove('hidden');
                 resultContent.classList.add('hidden');
-                logOutput.textContent = '';
-                combinedLogContent = '';
+                detailedResultsContainer.innerHTML = '';
+                downloadLogBtn.disabled = true;
+                downloadHighlightBtn.disabled = true;
                 
-                if (selectedFiles.length > 1) {
-                    downloadHighlightBtn.disabled = true;
-                    highlightNote.classList.remove('hidden');
-                } else {
-                    downloadHighlightBtn.disabled = false;
-                    highlightNote.classList.add('hidden');
-                }
+                processingResults = [];
 
+                // --- File Processing Loop ---
                 for (let i = 0; i < selectedFiles.length; i++) {
                     const file = selectedFiles[i];
                     spinnerText.textContent = `Đang xử lý tệp ${i + 1} / ${selectedFiles.length}: ${file.name}`;
-                    
                     try {
                         const fileData = await new Promise((resolve, reject) => {
                             const reader = new FileReader();
@@ -210,79 +179,185 @@
                         });
                         
                         const workbook = XLSX.read(fileData, { type: 'array', cellDates: true, bookVCF: true });
+                        const result = processWorkbook(workbook, file.name);
                         
-                        if (selectedFiles.length === 1) {
-                            workbookToHighlight = fileData;
-                            baseFileNameGlobal = file.name.replace(/\.(xlsx|xls)$/, '');
-                        }
-
-                        processWorkbook(workbook, file.name);
+                        processingResults.push({
+                            baseFileName: file.name,
+                            logContent: result.fileLogContent,
+                            hasErrors: result.hasErrors,
+                            rowsToHighlight: result.rowsToHighlight,
+                            originalFileData: fileData
+                        });
 
                     } catch (error) {
-                        console.error(`Lỗi khi xử lý tệp ${file.name}:`, error);
-                        combinedLogContent += `==================================================\n`;
-                        combinedLogContent += `KHÔNG THỂ XỬ LÝ TỆP: ${file.name}\n`;
-                        combinedLogContent += `Lỗi: ${error.message}\n`;
-                        combinedLogContent += `==================================================\n\n`;
+                        const errorLog = `==================================================\nKHÔNG THỂ XỬ LÝ TỆP: ${file.name}\nLỗi: ${error.message}\n==================================================\n\n`;
+                        processingResults.push({
+                           baseFileName: file.name,
+                           logContent: errorLog,
+                           hasErrors: true,
+                           rowsToHighlight: {},
+                           originalFileData: null
+                        });
                     }
                 }
                 
+                // --- Update UI with Results ---
                 spinner.classList.add('hidden');
                 resultContent.classList.remove('hidden');
-                logOutput.textContent = combinedLogContent;
-
-                downloadLogBtn.onclick = () => {
-                    const blob = new Blob([combinedLogContent], { type: 'text/plain;charset=utf-8' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `tong_hop_log.txt`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                };
-
-                downloadHighlightBtn.onclick = () => {
-                    if (selectedFiles.length !== 1 || !workbookToHighlight) return;
-
-                    const newWb = XLSX.read(workbookToHighlight, { type: 'array', cellDates: true, bookVCF: true });
-                    const yellowFill = { fgColor: { rgb: "FFFF00" } };
-                    const style = { fill: yellowFill };
-
-                    Object.keys(rowsToHighlightGlobal).forEach(sheetName => {
-                        if (newWb.Sheets[sheetName]) {
-                            const ws = newWb.Sheets[sheetName];
-                            const rows = rowsToHighlightGlobal[sheetName];
-                            const range = XLSX.utils.decode_range(ws['!ref']);
-                            rows.forEach(rowIdx => {
-                                for (let C = range.s.c; C <= range.e.c; ++C) {
-                                    const cellAddress = XLSX.utils.encode_cell({ r: rowIdx - 1, c: C });
-                                    if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: '' };
-                                    ws[cellAddress].s = style;
-                                }
-                            });
-                        }
-                    });
-                    XLSX.writeFile(newWb, `${baseFileNameGlobal}_highlight.xlsx`);
-                };
+                displayDetailedResults();
+                updateMasterDownloadButtons();
             });
 
-            // --- Core Validation Functions ---
+            // --- THÊM MỚI: Hàm hiển thị bảng kết quả chi tiết ---
+            function displayDetailedResults() {
+                const filesWithErrors = processingResults.filter(r => r.hasErrors);
+                const filesWithoutErrors = processingResults.filter(r => !r.hasErrors);
+                let html = '';
+
+                const renderTable = (title, files, showErrorButtons) => {
+                    if (files.length === 0) return '';
+                    let tableHtml = `<div class="mb-6"><h3 class="text-lg font-semibold text-gray-700 mb-2">${title} (${files.length})</h3>`;
+                    tableHtml += `<div class="overflow-x-auto rounded-lg border border-gray-200"><table class="min-w-full divide-y-2 divide-gray-200 bg-white text-sm">`;
+                    tableHtml += `<thead class="ltr:text-left rtl:text-right bg-gray-50"><tr class="text-left">
+                                    <th class="whitespace-nowrap px-4 py-2 font-medium text-gray-900">Tên Tệp</th>
+                                    <th class="whitespace-nowrap px-4 py-2 font-medium text-gray-900">Hành động</th>
+                                  </tr></thead>`;
+                    tableHtml += `<tbody class="divide-y divide-gray-200">`;
+
+                    files.forEach(file => {
+                        tableHtml += `<tr><td class="whitespace-nowrap px-4 py-2 font-medium text-gray-900">${file.baseFileName}</td>`;
+                        tableHtml += `<td class="whitespace-nowrap px-4 py-2 text-gray-700">
+                                        <button data-filename="${file.baseFileName}" class="download-single-log btn btn-small bg-green-100 text-green-700 hover:bg-green-200">Tải Log</button>`;
+                        if (showErrorButtons && file.originalFileData) {
+                            tableHtml += ` <button data-filename="${file.baseFileName}" class="download-single-highlight btn btn-small bg-amber-100 text-amber-700 hover:bg-amber-200 ml-2">Tải Highlight</button>`;
+                        }
+                        tableHtml += `</td></tr>`;
+                    });
+
+                    tableHtml += `</tbody></table></div></div>`;
+                    return tableHtml;
+                };
+
+                html += renderTable('Tệp có lỗi', filesWithErrors, true);
+                html += renderTable('Tệp hợp lệ (không có lỗi)', filesWithoutErrors, false);
+                
+                detailedResultsContainer.innerHTML = html;
+            }
+            
+            // --- THÊM MỚI: Xử lý sự kiện click cho các nút download đơn lẻ ---
+            detailedResultsContainer.addEventListener('click', (e) => {
+                const button = e.target.closest('button');
+                if (!button) return;
+
+                const fileName = button.dataset.filename;
+                const result = processingResults.find(r => r.baseFileName === fileName);
+                if (!result) return;
+                
+                const baseNameWithoutExt = result.baseFileName.replace(/\.(xlsx|xls)$/, '');
+
+                if (button.classList.contains('download-single-log')) {
+                    downloadBlob(new Blob([result.logContent], { type: 'text/plain;charset=utf-8' }), `${baseNameWithoutExt}_log.txt`);
+                }
+
+                if (button.classList.contains('download-single-highlight')) {
+                    if (!result.originalFileData) return;
+                    const wb = createHighlightedWorkbook(result.originalFileData, result.rowsToHighlight);
+                    XLSX.writeFile(wb, `${baseNameWithoutExt}_highlight.xlsx`);
+                }
+            });
+
+            // --- Download Logic ---
+            function updateMasterDownloadButtons() {
+                const fileCount = processingResults.length;
+                const filesWithErrors = processingResults.filter(r => r.hasErrors && r.originalFileData);
+
+                downloadLogBtn.disabled = fileCount === 0;
+                downloadHighlightBtn.disabled = filesWithErrors.length === 0;
+
+                downloadLogBtn.textContent = `Tải ${fileCount > 1 ? 'Tất Cả ' : ''}Logs ${fileCount > 1 ? '(ZIP)' : ''}`;
+                downloadHighlightBtn.textContent = `Tải ${filesWithErrors.length > 1 ? 'Tất Cả ' : ''}Highlights ${filesWithErrors.length > 1 ? '(ZIP)' : ''}`;
+            }
+
+            downloadLogBtn.addEventListener('click', async () => {
+                if (processingResults.length === 1) {
+                    const result = processingResults[0];
+                    downloadBlob(new Blob([result.logContent], { type: 'text/plain;charset=utf-8' }), `${result.baseFileName.replace(/\.(xlsx|xls)$/, '')}_log.txt`);
+                } else if (processingResults.length > 1) {
+                    const zip = new JSZip();
+                    processingResults.forEach(result => {
+                        zip.file(`${result.baseFileName.replace(/\.(xlsx|xls)$/, '')}_log.txt`, result.logContent);
+                    });
+                    const zipBlob = await zip.generateAsync({ type: "blob" });
+                    downloadBlob(zipBlob, "all_logs.zip");
+                }
+            });
+
+            downloadHighlightBtn.addEventListener('click', async () => {
+                const filesWithErrors = processingResults.filter(r => r.hasErrors && r.originalFileData);
+                if (filesWithErrors.length === 0) return;
+
+                if (filesWithErrors.length === 1) {
+                    const result = filesWithErrors[0];
+                    const wb = createHighlightedWorkbook(result.originalFileData, result.rowsToHighlight);
+                    XLSX.writeFile(wb, `${result.baseFileName.replace(/\.(xlsx|xls)$/, '')}_highlight.xlsx`);
+                } else {
+                    const zip = new JSZip();
+                    filesWithErrors.forEach(result => {
+                        const wb = createHighlightedWorkbook(result.originalFileData, result.rowsToHighlight);
+                        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                        zip.file(`${result.baseFileName.replace(/\.(xlsx|xls)$/, '')}_highlight.xlsx`, wbout);
+                    });
+                    const zipBlob = await zip.generateAsync({ type: "blob" });
+                    downloadBlob(zipBlob, "all_highlights.zip");
+                }
+            });
+            
+            function downloadBlob(blob, fileName) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            function createHighlightedWorkbook(fileData, rowsToHighlight) {
+                const wb = XLSX.read(fileData, { type: 'array', cellDates: true, bookVCF: true, cellStyles: true });
+                const yellowFill = { fgColor: { rgb: "FFFF00" } };
+                const style = { fill: yellowFill };
+                Object.keys(rowsToHighlight).forEach(sheetName => {
+                    if (wb.Sheets[sheetName]) {
+                        const ws = wb.Sheets[sheetName];
+                        const rows = rowsToHighlight[sheetName];
+                        const range = XLSX.utils.decode_range(ws['!ref']);
+                        rows.forEach(rowIdx => {
+                            for (let C = range.s.c; C <= range.e.c; ++C) {
+                                const cellAddress = XLSX.utils.encode_cell({ r: rowIdx - 1, c: C });
+                                if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: '' };
+                                ws[cellAddress].s = style;
+                            }
+                        });
+                    }
+                });
+                return wb;
+            }
+
+            // --- Core Workbook Processor ---
             function processWorkbook(wb, fileName) {
                 const REQUIRED_COLS = ['số hồ sơ', 'thbq', 'ngày bắt đầu', 'ngày kết thúc'];
                 const allErrorsBySheet = {};
                 const rowsToHighlight = {};
                 let skippedSheetsLog = [];
                 let processedSheets = [];
-                
-                rowsToHighlightGlobal = {};
-
-                let fileLogContent = `Bắt đầu phân tích tệp: ${fileName}\n`;
-                fileLogContent += "==================================================\n\n";
-
+                let hasErrors = false;
+                let fileLogContent = `Bắt đầu phân tích tệp: ${fileName}\n==================================================\n\n`;
+                // (Các hàm con checkSingleDateFormat, validateDateCell, parseFullDateFromCell không thay đổi)
+                // ...
+                // --- Các hàm kiểm tra con ---
                 function checkSingleDateFormat(dateInput) {
-                    if (dateInput instanceof Date) {
+                    if (dateInput instanceof Date && !isNaN(dateInput)) {
                         const year = dateInput.getFullYear();
                         if (!(year >= 1900 && year <= 2026)) return `Năm ${year} nằm ngoài khoảng (1900-2026)`;
                         return null;
@@ -291,9 +366,7 @@
                     const dateStr = String(dateInput).trim();
                     const matchFull = dateStr.match(/^(0?[1-9]|[12][0-9]|3[01])[\/-](0?[1-9]|1[012])[\/-](\d{4})$/);
                     if (matchFull) {
-                        const day = parseInt(matchFull[1], 10);
-                        const month = parseInt(matchFull[2], 10);
-                        const year = parseInt(matchFull[3], 10);
+                        const [, day, month, year] = matchFull.map(Number);
                         if (!(year >= 1900 && year <= 2026)) return `Năm ${year} nằm ngoài khoảng (1900-2026)`;
                         const testDate = new Date(year, month - 1, day);
                         if (testDate.getFullYear() !== year || testDate.getMonth() + 1 !== month || testDate.getDate() !== day) return "Ngày không tồn tại trong lịch";
@@ -301,12 +374,11 @@
                     }
                     const matchMonthYear = dateStr.match(/^(0?[1-9]|1[012])[\/-](\d{4})$/);
                     if (matchMonthYear) {
-                        const year = parseInt(matchMonthYear[2], 10);
+                        const [, , year] = matchMonthYear.map(Number);
                         if (!(year >= 1900 && year <= 2026)) return `Năm ${year} nằm ngoài khoảng (1900-2026)`;
                         return null;
                     }
-                    const matchYear = dateStr.match(/^\d{4}$/);
-                    if (matchYear) {
+                    if (/^\d{4}$/.test(dateStr)) {
                         const year = parseInt(dateStr, 10);
                         if (!(year >= 1900 && year <= 2026)) return `Năm ${year} nằm ngoài khoảng (1900-2026)`;
                         return null;
@@ -322,20 +394,19 @@
                     return errors.length > 0 ? errors.join("; ") : null;
                 }
                 function parseFullDateFromCell(cellContent) {
+                    if (cellContent instanceof Date && !isNaN(cellContent)) return cellContent;
                     if (cellContent == null || String(cellContent).trim() === '') return null;
-                    for (const dateStr of String(cellContent).trim().split(/[\s\n,;]+/).filter(Boolean)) {
+                     for (const dateStr of String(cellContent).trim().split(/[\s\n,;]+/).filter(Boolean)) {
                         const matchFull = dateStr.match(/^(0?[1-9]|[12][0-9]|3[01])[\/-](0?[1-9]|1[012])[\/-](\d{4})$/);
                         if (matchFull) {
-                            const day = parseInt(matchFull[1], 10);
-                            const month = parseInt(matchFull[2], 10);
-                            const year = parseInt(matchFull[3], 10);
+                            const [, day, month, year] = matchFull.map(Number);
                             const testDate = new Date(year, month - 1, day);
                             if (testDate.getFullYear() === year && testDate.getMonth() + 1 === month && testDate.getDate() === day) return testDate;
                         }
                     }
                     return null;
                 }
-
+                // --- Kết thúc hàm kiểm tra con ---
                 for (const sheetName of wb.SheetNames) {
                     const ws = wb.Sheets[sheetName];
                     const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
@@ -347,50 +418,43 @@
                         continue;
                     }
                     processedSheets.push(sheetName);
-                    const jsonData = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
+                    const jsonData = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false, cellDates: true });
+                    
                     for (let i = 0; i < jsonData.length; i++) {
                         const row = jsonData[i];
                         const excelRowNum = i + 2;
                         const normalizedRow = {};
                         Object.keys(row).forEach(key => { normalizedRow[key.trim().toLowerCase()] = row[key]; });
-                        const soHoSo = String(normalizedRow['số hồ sơ'] || '').trim();
-                        const thbq = String(normalizedRow['thbq'] || '').trim();
-                        if (!soHoSo || !thbq) continue;
-                        const ngayBatDauVal = normalizedRow['ngày bắt đầu'] || '';
-                        const ngayKetThucVal = normalizedRow['ngày kết thúc'] || '';
-                        const isStartEmpty = String(ngayBatDauVal).trim() === '';
-                        const isEndEmpty = String(ngayKetThucVal).trim() === '';
+                        if (!normalizedRow['số hồ sơ'] || !normalizedRow['thbq']) continue;
+                        const ngayBatDauVal = normalizedRow['ngày bắt đầu'];
+                        const ngayKetThucVal = normalizedRow['ngày kết thúc'];
+                        const isStartEmpty = ngayBatDauVal == null || String(ngayBatDauVal).trim() === '';
+                        const isEndEmpty = ngayKetThucVal == null || String(ngayKetThucVal).trim() === '';
+                        let rowErrors = [];
                         if (isStartEmpty && isEndEmpty) {
-                            (allErrorsBySheet[sheetName] = allErrorsBySheet[sheetName] || []).push(`Lỗi ở dòng ${excelRowNum}: Cả 'ngày bắt đầu' và 'ngày kết thúc' đều trống`);
-                            (rowsToHighlight[sheetName] = rowsToHighlight[sheetName] || new Set()).add(excelRowNum);
-                            continue;
-                        }
-                        if (isStartEmpty && !isEndEmpty) {
-                            (allErrorsBySheet[sheetName] = allErrorsBySheet[sheetName] || []).push(`Lỗi ở dòng ${excelRowNum}: Ngày bắt đầu trống trong khi ngày kết thúc có dữ liệu`);
-                            (rowsToHighlight[sheetName] = rowsToHighlight[sheetName] || new Set()).add(excelRowNum);
-                            continue;
-                        }
-                        const startDateError = validateDateCell(ngayBatDauVal);
-                        if (startDateError) {
-                            (allErrorsBySheet[sheetName] = allErrorsBySheet[sheetName] || []).push(`Lỗi ở dòng ${excelRowNum}: Ngày bắt đầu không hợp lệ (${startDateError})`);
-                            (rowsToHighlight[sheetName] = rowsToHighlight[sheetName] || new Set()).add(excelRowNum);
-                        }
-                        const endDateError = validateDateCell(ngayKetThucVal);
-                        if (endDateError) {
-                            (allErrorsBySheet[sheetName] = allErrorsBySheet[sheetName] || []).push(`Lỗi ở dòng ${excelRowNum}: Ngày kết thúc không hợp lệ (${endDateError})`);
-                            (rowsToHighlight[sheetName] = rowsToHighlight[sheetName] || new Set()).add(excelRowNum);
-                        }
-                        if (!startDateError && !endDateError && !isStartEmpty && !isEndEmpty) {
-                            const startDateObj = parseFullDateFromCell(ngayBatDauVal);
-                            const endDateObj = parseFullDateFromCell(ngayKetThucVal);
-                            if (startDateObj && endDateObj && endDateObj < startDateObj) {
-                                (allErrorsBySheet[sheetName] = allErrorsBySheet[sheetName] || []).push(`Lỗi ở dòng ${excelRowNum}: Ngày kết thúc (${endDateObj.toLocaleDateString('vi-VN')}) xảy ra trước ngày bắt đầu (${startDateObj.toLocaleDateString('vi-VN')})`);
-                                (rowsToHighlight[sheetName] = rowsToHighlight[sheetName] || new Set()).add(excelRowNum);
+                            rowErrors.push(`Lỗi ở dòng ${excelRowNum}: Cả 'ngày bắt đầu' và 'ngày kết thúc' đều trống`);
+                        } else if (isStartEmpty && !isEndEmpty) {
+                            rowErrors.push(`Lỗi ở dòng ${excelRowNum}: 'ngày bắt đầu' trống trong khi 'ngày kết thúc' có dữ liệu`);
+                        } else {
+                            const startDateError = validateDateCell(ngayBatDauVal);
+                            if (startDateError) rowErrors.push(`Lỗi ở dòng ${excelRowNum}: 'ngày bắt đầu' không hợp lệ (${startDateError})`);
+                            const endDateError = validateDateCell(ngayKetThucVal);
+                            if (endDateError) rowErrors.push(`Lỗi ở dòng ${excelRowNum}: 'ngày kết thúc' không hợp lệ (${endDateError})`);
+                            if (!startDateError && !endDateError && !isEndEmpty) {
+                                const startDateObj = parseFullDateFromCell(ngayBatDauVal);
+                                const endDateObj = parseFullDateFromCell(ngayKetThucVal);
+                                if (startDateObj && endDateObj && endDateObj < startDateObj) {
+                                    rowErrors.push(`Lỗi ở dòng ${excelRowNum}: Ngày kết thúc (${endDateObj.toLocaleDateString('vi-VN')}) xảy ra trước ngày bắt đầu (${startDateObj.toLocaleDateString('vi-VN')})`);
+                                }
                             }
+                        }
+                        if(rowErrors.length > 0) {
+                            (allErrorsBySheet[sheetName] = allErrorsBySheet[sheetName] || []).push(...rowErrors);
+                            (rowsToHighlight[sheetName] = rowsToHighlight[sheetName] || new Set()).add(excelRowNum);
+                            hasErrors = true;
                         }
                     }
                 }
-
                 processedSheets.forEach(sheetName => {
                     fileLogContent += `--- Sheet: ${sheetName} ---\n`;
                     if (allErrorsBySheet[sheetName] && allErrorsBySheet[sheetName].length > 0) {
@@ -402,9 +466,7 @@
                 if (skippedSheetsLog.length > 0) fileLogContent += skippedSheetsLog.join("");
                 if (processedSheets.length === 0 && skippedSheetsLog.length === 0) fileLogContent += "Phân tích hoàn tất. Không tìm thấy sheet nào để xử lý.\n\n";
                 
-                combinedLogContent += fileLogContent;
-                
-                rowsToHighlightGlobal = rowsToHighlight;
+                return { fileLogContent, rowsToHighlight, hasErrors };
             }
         });
     </script>
