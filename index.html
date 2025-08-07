@@ -54,8 +54,8 @@
                         </div>
                         <div id="result-content" class="hidden">
                             <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Kết Quả Kiểm Tra</h2>
-                            <div class="mb-6">
-                                 <h3 id="log-preview-title" class="text-lg font-semibold text-gray-700 mb-2">Log Tổng Hợp (Xem trước)</h3>
+                            <div id="log-preview-wrapper" class="mb-6 hidden">
+                                 <h3 id="log-preview-title" class="text-lg font-semibold text-gray-700 mb-2">Log các tệp có lỗi</h3>
                                  <div class="bg-gray-50 p-4 rounded-lg max-h-60 overflow-y-auto border">
                                     <pre id="combined-log-preview" class="text-xs text-gray-700 whitespace-pre-wrap break-words"></pre>
                                  </div>
@@ -64,8 +64,8 @@
                             <div class="bg-gray-100 p-4 rounded-lg">
                                 <h3 class="text-lg font-semibold text-gray-800 mb-2 text-center">Tải xuống hàng loạt & Thao tác</h3>
                                 <div class="mt-4 flex flex-col sm:flex-row justify-center items-center gap-4">
-                                    <button id="download-log-btn" class="w-full sm:w-auto bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-green-700 btn disabled:bg-gray-400">Tải Tất Cả Logs</button>
-                                    <button id="download-highlight-btn" class="w-full sm:w-auto bg-amber-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-amber-600 btn disabled:bg-gray-400">Tải Tất Cả Highlights</button>
+                                    <button id="download-log-btn" class="w-full sm:w-auto bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-green-700 btn disabled:bg-gray-400">Tải Logs Lỗi</button>
+                                    <button id="download-highlight-btn" class="w-full sm:w-auto bg-amber-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-amber-600 btn disabled:bg-gray-400">Tải Highlights</button>
                                     <button id="reload-btn" class="w-full sm:w-auto bg-sky-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-sky-700 btn">Kiểm Tra Tệp Khác</button>
                                 </div>
                             </div>
@@ -106,6 +106,7 @@
             const downloadHighlightBtn = document.getElementById('download-highlight-btn');
             const reloadBtn = document.getElementById('reload-btn');
             const detailedResultsContainer = document.getElementById('detailed-results-container');
+            const logPreviewWrapper = document.getElementById('log-preview-wrapper');
             const logPreviewTitle = document.getElementById('log-preview-title');
             const combinedLogPreview = document.getElementById('combined-log-preview');
             const sidePreviewPanel = document.getElementById('side-preview-panel');
@@ -153,6 +154,7 @@
                 spinner.classList.remove('hidden');
                 resultContent.classList.add('hidden');
                 detailedResultsContainer.innerHTML = '';
+                logPreviewWrapper.classList.add('hidden');
                 combinedLogPreview.textContent = '';
                 downloadLogBtn.disabled = true;
                 downloadHighlightBtn.disabled = true;
@@ -178,13 +180,20 @@
                             rowsToHighlight: result.rowsToHighlight,
                             originalFileData: fileData
                         });
-                        fullLogContent += result.fileLogContent;
-                        if (i < selectedFiles.length - 1) {
-                            fullLogContent += "\n\n******************** KẾT THÚC LOG TỆP NÀY ********************\n\n\n";
+                        
+                        // THAY ĐỔI: Chỉ tổng hợp log của file có lỗi
+                        if (result.hasErrors) {
+                            if (fullLogContent !== "") {
+                                fullLogContent += "\n\n******************** KẾT THÚC LOG TỆP TRƯỚC ********************\n\n\n";
+                            }
+                            fullLogContent += result.fileLogContent;
                         }
 
                     } catch (error) {
                         const errorLog = `==================================================\nKHÔNG THỂ XỬ LÝ TỆP: ${file.name}\nLỗi: ${error.message}\n==================================================\n\n`;
+                        if (fullLogContent !== "") {
+                            fullLogContent += "\n\n******************** KẾT THÚC LOG TỆP TRƯỚC ********************\n\n\n";
+                        }
                         fullLogContent += errorLog;
                         processingResults.push({ baseFileName: file.name, logContent: errorLog, hasErrors: true, rowsToHighlight: {}, originalFileData: null });
                     }
@@ -192,7 +201,13 @@
                 
                 spinner.classList.add('hidden');
                 resultContent.classList.remove('hidden');
-                combinedLogPreview.textContent = fullLogContent;
+                
+                // THAY ĐỔI: Chỉ hiển thị khu vực log preview nếu có lỗi
+                if(fullLogContent.trim() !== "") {
+                    logPreviewWrapper.classList.remove('hidden');
+                    combinedLogPreview.textContent = fullLogContent;
+                }
+                
                 displayDetailedResults();
                 updateMasterDownloadButtons();
             });
@@ -202,27 +217,38 @@
                 const filesWithErrors = processingResults.filter(r => r.hasErrors);
                 const filesWithoutErrors = processingResults.filter(r => !r.hasErrors);
                 let html = '';
-                const renderTable = (title, files, showErrorButtons) => {
-                    if (files.length === 0) return '';
-                    let tableHtml = `<div class="mb-6"><h3 class="text-lg font-semibold text-gray-700 mb-2">${title} (${files.length})</h3>`;
-                    tableHtml += `<div class="overflow-x-auto rounded-lg border border-gray-200"><table class="min-w-full divide-y-2 divide-gray-200 bg-white text-sm">`;
-                    tableHtml += `<thead class="ltr:text-left rtl:text-right bg-gray-50"><tr class="text-left"><th class="whitespace-nowrap px-4 py-2 font-medium text-gray-900">Tên Tệp</th><th class="whitespace-nowrap px-4 py-2 font-medium text-gray-900">Hành động</th></tr></thead>`;
-                    tableHtml += `<tbody class="divide-y divide-gray-200">`;
-                    files.forEach(file => {
-                        tableHtml += `<tr><td class="whitespace-nowrap px-4 py-2 font-medium text-gray-900">${file.baseFileName}</td>`;
-                        tableHtml += `<td class="whitespace-nowrap px-4 py-2 text-gray-700 flex items-center gap-2">
+
+                // Bảng cho tệp có lỗi
+                if (filesWithErrors.length > 0) {
+                    html += `<div class="mb-6"><h3 class="text-lg font-semibold text-gray-700 mb-2">Tệp có lỗi (${filesWithErrors.length})</h3>`;
+                    html += `<div class="overflow-x-auto rounded-lg border border-gray-200"><table class="min-w-full divide-y-2 divide-gray-200 bg-white text-sm">`;
+                    html += `<thead class="ltr:text-left rtl:text-right bg-gray-50"><tr class="text-left"><th class="whitespace-nowrap px-4 py-2 font-medium text-gray-900">Tên Tệp</th><th class="whitespace-nowrap px-4 py-2 font-medium text-gray-900">Hành động</th></tr></thead>`;
+                    html += `<tbody class="divide-y divide-gray-200">`;
+                    filesWithErrors.forEach(file => {
+                        html += `<tr><td class="whitespace-nowrap px-4 py-2 font-medium text-gray-900">${file.baseFileName}</td>`;
+                        html += `<td class="whitespace-nowrap px-4 py-2 text-gray-700 flex items-center gap-2">
                                         <button data-filename="${file.baseFileName}" class="download-single-log btn btn-small bg-green-100 text-green-700 hover:bg-green-200">Tải Log</button>`;
-                        if (showErrorButtons && file.originalFileData) {
-                            tableHtml += `<button data-filename="${file.baseFileName}" class="download-single-highlight btn btn-small bg-amber-100 text-amber-700 hover:bg-amber-200">Tải Highlight</button>`;
-                            tableHtml += `<button data-filename="${file.baseFileName}" class="preview-highlight btn btn-small bg-blue-100 text-blue-700 hover:bg-blue-200" title="Xem trước"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg></button>`;
+                        if (file.originalFileData) {
+                            html += `<button data-filename="${file.baseFileName}" class="download-single-highlight btn btn-small bg-amber-100 text-amber-700 hover:bg-amber-200">Tải Highlight</button>`;
+                            html += `<button data-filename="${file.baseFileName}" class="preview-highlight btn btn-small bg-blue-100 text-blue-700 hover:bg-blue-200" title="Xem trước"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg></button>`;
                         }
-                        tableHtml += `</td></tr>`;
+                        html += `</td></tr>`;
                     });
-                    tableHtml += `</tbody></table></div></div>`;
-                    return tableHtml;
-                };
-                html += renderTable('Tệp có lỗi', filesWithErrors, true);
-                html += renderTable('Tệp hợp lệ (không có lỗi)', filesWithoutErrors, false);
+                    html += `</tbody></table></div></div>`;
+                }
+
+                // THAY ĐỔI: Bảng cho tệp hợp lệ chỉ liệt kê tên file
+                if (filesWithoutErrors.length > 0) {
+                    html += `<div class="mb-6"><h3 class="text-lg font-semibold text-gray-700 mb-2">Tệp hợp lệ không có lỗi (${filesWithoutErrors.length})</h3>`;
+                    html += `<div class="overflow-x-auto rounded-lg border border-gray-200"><table class="min-w-full divide-y-2 divide-gray-200 bg-white text-sm">`;
+                    html += `<thead class="ltr:text-left rtl:text-right bg-gray-50"><tr class="text-left"><th class="whitespace-nowrap px-4 py-2 font-medium text-gray-900">Tên Tệp</th></tr></thead>`;
+                    html += `<tbody class="divide-y divide-gray-200">`;
+                    filesWithoutErrors.forEach(file => {
+                        html += `<tr><td class="whitespace-nowrap px-4 py-2 font-medium text-gray-900">${file.baseFileName}</td></tr>`;
+                    });
+                    html += `</tbody></table></div></div>`;
+                }
+                
                 detailedResultsContainer.innerHTML = html;
             }
             
@@ -232,6 +258,7 @@
                 
                 logPreviewTitle.textContent = `Log cho tệp: ${fileName}`;
                 combinedLogPreview.textContent = result.logContent;
+                logPreviewWrapper.classList.remove('hidden');
 
                 mainContentCol.classList.remove('w-full');
                 mainContentCol.classList.add('w-1/2');
@@ -273,8 +300,15 @@
                 sidePreviewPanel.classList.add('hidden');
                 mainContentCol.classList.remove('w-1/2');
                 mainContentCol.classList.add('w-full');
-                logPreviewTitle.textContent = 'Log Tổng Hợp (Xem trước)';
-                combinedLogPreview.textContent = fullLogContent;
+                
+                // THAY ĐỔI: Chỉ hiển thị log tổng hợp nếu có lỗi
+                if (fullLogContent.trim() !== "") {
+                    logPreviewTitle.textContent = 'Log các tệp có lỗi';
+                    combinedLogPreview.textContent = fullLogContent;
+                    logPreviewWrapper.classList.remove('hidden');
+                } else {
+                    logPreviewWrapper.classList.add('hidden');
+                }
             }
             
             previewTabs.addEventListener('click', (e) => {
@@ -306,36 +340,40 @@
             
             // --- Download and Helper Functions ---
             function updateMasterDownloadButtons() {
-                const fileCount = processingResults.length;
-                const filesWithErrors = processingResults.filter(r => r.hasErrors && r.originalFileData);
-                downloadLogBtn.disabled = fileCount === 0;
-                downloadHighlightBtn.disabled = filesWithErrors.length === 0;
-                downloadLogBtn.textContent = `Tải ${fileCount > 1 ? 'Tất Cả ' : ''}Logs ${fileCount > 1 ? '(ZIP)' : ''}`;
-                downloadHighlightBtn.textContent = `Tải ${filesWithErrors.length > 1 ? 'Tất Cả ' : ''}Highlights ${filesWithErrors.length > 1 ? '(ZIP)' : ''}`;
+                const filesWithErrors = processingResults.filter(r => r.hasErrors);
+                downloadLogBtn.disabled = filesWithErrors.length === 0;
+                downloadHighlightBtn.disabled = filesWithErrors.filter(r => r.originalFileData).length === 0;
+
+                if (filesWithErrors.length > 0) {
+                    downloadLogBtn.textContent = `Tải Logs Lỗi ${filesWithErrors.length > 1 ? `(${filesWithErrors.length} tệp, ZIP)` : ''}`;
+                    downloadHighlightBtn.textContent = `Tải Highlights ${filesWithErrors.length > 1 ? `(${filesWithErrors.length} tệp, ZIP)` : ''}`;
+                }
             }
 
             downloadLogBtn.addEventListener('click', async () => {
-                if (processingResults.length === 1) {
-                    const result = processingResults[0];
+                const filesToDownload = processingResults.filter(r => r.hasErrors);
+                if (filesToDownload.length === 0) return;
+                if (filesToDownload.length === 1) {
+                    const result = filesToDownload[0];
                     downloadBlob(new Blob([result.logContent], { type: 'text/plain;charset=utf-8' }), `${result.baseFileName.replace(/\.(xlsx|xls)$/, '')}_log.txt`);
-                } else if (processingResults.length > 1) {
+                } else {
                     const zip = new JSZip();
-                    processingResults.forEach(result => { zip.file(`${result.baseFileName.replace(/\.(xlsx|xls)$/, '')}_log.txt`, result.logContent); });
+                    filesToDownload.forEach(result => { zip.file(`${result.baseFileName.replace(/\.(xlsx|xls)$/, '')}_log.txt`, result.logContent); });
                     const zipBlob = await zip.generateAsync({ type: "blob" });
-                    downloadBlob(zipBlob, "all_logs.zip");
+                    downloadBlob(zipBlob, "error_logs.zip");
                 }
             });
 
             downloadHighlightBtn.addEventListener('click', async () => {
-                const filesWithErrors = processingResults.filter(r => r.hasErrors && r.originalFileData);
-                if (filesWithErrors.length === 0) return;
-                if (filesWithErrors.length === 1) {
-                    const result = filesWithErrors[0];
+                const filesToDownload = processingResults.filter(r => r.hasErrors && r.originalFileData);
+                if (filesToDownload.length === 0) return;
+                if (filesToDownload.length === 1) {
+                    const result = filesToDownload[0];
                     const wb = createHighlightedWorkbook(result.originalFileData, result.rowsToHighlight);
                     XLSX.writeFile(wb, `${result.baseFileName.replace(/\.(xlsx|xls)$/, '')}_highlight.xlsx`);
                 } else {
                     const zip = new JSZip();
-                    filesWithErrors.forEach(result => {
+                    filesToDownload.forEach(result => {
                         const wb = createHighlightedWorkbook(result.originalFileData, result.rowsToHighlight);
                         const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
                         zip.file(`${result.baseFileName.replace(/\.(xlsx|xls)$/, '')}_highlight.xlsx`, wbout);
