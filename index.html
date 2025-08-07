@@ -78,15 +78,15 @@
             </div>
         </div>
 
-        <div id="side-preview-panel" class="w-1/2 flex-shrink-0 transition-all duration-300 hidden">
+        <div id="side-preview-panel" class="w-1/2 flex-shrink-0 transition-all duration-300 hidden sticky top-4 max-h-[calc(100vh-2rem)]">
             <div class="card h-full flex flex-col">
-                <div class="flex justify-between items-center p-4 border-b">
+                <div class="flex justify-between items-center p-4 border-b flex-shrink-0">
                     <h3 id="preview-title" class="text-xl font-semibold text-gray-800">Xem trước File</h3>
                     <button id="preview-close-btn" class="text-gray-400 hover:text-gray-600">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
-                <div id="preview-tabs" class="flex flex-wrap border-b p-2 bg-gray-50"></div>
+                <div id="preview-tabs" class="flex flex-wrap border-b p-2 bg-gray-50 flex-shrink-0"></div>
                 <div id="preview-body" class="p-4 overflow-auto flex-grow"></div>
             </div>
         </div>
@@ -110,7 +110,6 @@
             const reloadBtn = document.getElementById('reload-btn');
             const detailedResultsContainer = document.getElementById('detailed-results-container');
             const combinedLogPreview = document.getElementById('combined-log-preview');
-            // THAY ĐỔI: DOM elements cho Panel Preview
             const sidePreviewPanel = document.getElementById('side-preview-panel');
             const previewCloseBtn = document.getElementById('preview-close-btn');
             const previewTitle = document.getElementById('preview-title');
@@ -149,7 +148,7 @@
             // --- Main Processing Logic ---
             processBtn.addEventListener('click', async () => {
                 if (selectedFiles.length === 0) return;
-                hideSidePreview(); // Ẩn panel nếu nó đang mở
+                hideSidePreview();
                 uploadSection.classList.add('hidden');
                 resultSection.classList.remove('hidden');
                 spinner.classList.remove('hidden');
@@ -278,7 +277,6 @@
                  }
             });
 
-            // --- Individual Action Handlers (Event Delegation) ---
             detailedResultsContainer.addEventListener('click', (e) => {
                 const button = e.target.closest('button');
                 if (!button) return;
@@ -286,7 +284,6 @@
                 const result = processingResults.find(r => r.baseFileName === fileName);
                 if (!result) return;
                 const baseNameWithoutExt = result.baseFileName.replace(/\.(xlsx|xls)$/, '');
-
                 if (button.classList.contains('download-single-log')) {
                     downloadBlob(new Blob([result.logContent], { type: 'text/plain;charset=utf-8' }), `${baseNameWithoutExt}_log.txt`);
                 } else if (button.classList.contains('download-single-highlight')) {
@@ -298,7 +295,6 @@
                 }
             });
             
-            // --- Download and Helper Functions ---
             function updateMasterDownloadButtons() {
                 const fileCount = processingResults.length;
                 const filesWithErrors = processingResults.filter(r => r.hasErrors && r.originalFileData);
@@ -422,7 +418,7 @@
                         if (matchFull) {
                             const [, day, month, year] = matchFull.map(Number);
                             const testDate = new Date(year, month - 1, day);
-                            if (testDate.getFullYear() === year && testDate.getMonth() + 1 === month && testDate.getDate() === day) return testDate;
+                            if (testDate.getFullYear() === year && testDate.getMonth() + 1 === month && testDate.getDate() !== day) return testDate;
                         }
                     }
                     return null;
