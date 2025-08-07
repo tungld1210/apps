@@ -119,10 +119,9 @@
             const downloadHighlightBtn = document.getElementById('download-highlight-btn');
             const highlightNote = document.getElementById('highlight-note');
 
-            // THAY ĐỔI: Dùng mảng để chứa nhiều file
             let selectedFiles = []; 
             let combinedLogContent = "";
-            let workbookToHighlight = null; // Chỉ lưu workbook cuối cùng (nếu chỉ có 1 file)
+            let workbookToHighlight = null;
             let rowsToHighlightGlobal = {};
             let baseFileNameGlobal = "ket_qua";
 
@@ -133,13 +132,13 @@
             });
             dropZone.addEventListener('dragleave', (e) => {
                 e.preventDefault();
-                dropZone.classList.remove('dragover');
+                dropZone.classList.remove('dragleave');
             });
             dropZone.addEventListener('drop', (e) => {
                 e.preventDefault();
                 dropZone.classList.remove('dragover');
                 if (e.dataTransfer.files.length > 0) {
-                    handleFiles(e.dataTransfer.files); // THAY ĐỔI: Gọi hàm xử lý danh sách tệp
+                    handleFiles(e.dataTransfer.files);
                 }
             });
             dropZone.addEventListener('click', (e) => {
@@ -149,13 +148,12 @@
             });
             fileInput.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) {
-                    handleFiles(e.target.files); // THAY ĐỔI: Gọi hàm xử lý danh sách tệp
+                    handleFiles(e.target.files);
                 }
             });
             
-            // THAY ĐỔI: Hàm mới để xử lý danh sách tệp
             function handleFiles(files) {
-                selectedFiles = []; // Xóa danh sách cũ
+                selectedFiles = [];
                 let validFilesCount = 0;
                 let errorMessages = [];
 
@@ -181,11 +179,9 @@
             }
 
             // --- Processing Logic ---
-            // THAY ĐỔI: Hàm xử lý chính được cập nhật để lặp qua các tệp
             processBtn.addEventListener('click', async () => {
                 if (selectedFiles.length === 0) return;
 
-                // Reset UI
                 uploadSection.classList.add('hidden');
                 resultSection.classList.remove('hidden');
                 spinner.classList.remove('hidden');
@@ -193,7 +189,6 @@
                 logOutput.textContent = '';
                 combinedLogContent = '';
                 
-                // Vô hiệu hóa nút highlight và hiện ghi chú nếu có nhiều hơn 1 file
                 if (selectedFiles.length > 1) {
                     downloadHighlightBtn.disabled = true;
                     highlightNote.classList.remove('hidden');
@@ -207,7 +202,6 @@
                     spinnerText.textContent = `Đang xử lý tệp ${i + 1} / ${selectedFiles.length}: ${file.name}`;
                     
                     try {
-                        // Dùng Promise để xử lý bất đồng bộ của FileReader một cách tuần tự
                         const fileData = await new Promise((resolve, reject) => {
                             const reader = new FileReader();
                             reader.onload = (e) => resolve(new Uint8Array(e.target.result));
@@ -217,7 +211,6 @@
                         
                         const workbook = XLSX.read(fileData, { type: 'array', cellDates: true, bookVCF: true });
                         
-                        // Chỉ lưu workbook và tên file để highlight nếu đây là file duy nhất
                         if (selectedFiles.length === 1) {
                             workbookToHighlight = fileData;
                             baseFileNameGlobal = file.name.replace(/\.(xlsx|xls)$/, '');
@@ -234,12 +227,10 @@
                     }
                 }
                 
-                // --- Display final results ---
                 spinner.classList.add('hidden');
                 resultContent.classList.remove('hidden');
                 logOutput.textContent = combinedLogContent;
 
-                // --- Set up download buttons ---
                 downloadLogBtn.onclick = () => {
                     const blob = new Blob([combinedLogContent], { type: 'text/plain;charset=utf-8' });
                     const url = URL.createObjectURL(blob);
@@ -252,7 +243,6 @@
                     URL.revokeObjectURL(url);
                 };
 
-                // Nút highlight chỉ hoạt động khi có đúng 1 tệp được xử lý
                 downloadHighlightBtn.onclick = () => {
                     if (selectedFiles.length !== 1 || !workbookToHighlight) return;
 
@@ -279,7 +269,6 @@
             });
 
             // --- Core Validation Functions ---
-            // THAY ĐỔI: Hàm này giờ nhận thêm tên file để ghi log
             function processWorkbook(wb, fileName) {
                 const REQUIRED_COLS = ['số hồ sơ', 'thbq', 'ngày bắt đầu', 'ngày kết thúc'];
                 const allErrorsBySheet = {};
@@ -287,12 +276,11 @@
                 let skippedSheetsLog = [];
                 let processedSheets = [];
                 
-                rowsToHighlightGlobal = {}; // Reset highlight cho file mới
+                rowsToHighlightGlobal = {};
 
                 let fileLogContent = `Bắt đầu phân tích tệp: ${fileName}\n`;
                 fileLogContent += "==================================================\n\n";
 
-                // Functions from Python script, converted to JS
                 function checkSingleDateFormat(dateInput) {
                     if (dateInput instanceof Date) {
                         const year = dateInput.getFullYear();
@@ -348,7 +336,6 @@
                     return null;
                 }
 
-                // Main processing loop
                 for (const sheetName of wb.SheetNames) {
                     const ws = wb.Sheets[sheetName];
                     const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
@@ -404,7 +391,6 @@
                     }
                 }
 
-                // --- Generate log content for this file ---
                 processedSheets.forEach(sheetName => {
                     fileLogContent += `--- Sheet: ${sheetName} ---\n`;
                     if (allErrorsBySheet[sheetName] && allErrorsBySheet[sheetName].length > 0) {
@@ -416,10 +402,8 @@
                 if (skippedSheetsLog.length > 0) fileLogContent += skippedSheetsLog.join("");
                 if (processedSheets.length === 0 && skippedSheetsLog.length === 0) fileLogContent += "Phân tích hoàn tất. Không tìm thấy sheet nào để xử lý.\n\n";
                 
-                // Gộp log của file này vào log tổng
                 combinedLogContent += fileLogContent;
                 
-                // Lưu lại thông tin highlight để dùng cho nút download (chỉ có tác dụng với file cuối cùng nếu có nhiều file)
                 rowsToHighlightGlobal = rowsToHighlight;
             }
         });
